@@ -11,97 +11,138 @@
     .controls{ display:flex; gap:12px; align-items:center; background:rgba(255,255,255,0.03); padding:18px 22px; border-radius:12px; box-shadow: 0 6px 20px rgba(2,6,23,0.6) }
     input[type=text]{ padding:10px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); min-width:260px; background:rgba(0,0,0,0.15); color:inherit }
     select{ padding:10px 12px; border-radius:8px; background:rgba(0,0,0,0.15); color:inherit; border:1px solid rgba(255,255,255,0.06) }
-    button#generate{ padding:10px 18px; border-radius:10px; background:var(--accent); color:#081226; border:none; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center }
+    button#generate{ padding:10px 18px; border-radius:10px; background:var(--accent); color:#081226; border:none; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:transform .35s ease, background-color .35s ease, color .35s ease }
     button.spin{ animation:spinAnim 1.2s linear; }
     @keyframes spinAnim { from { transform:rotate(0deg) } to { transform:rotate(360deg) } }
-    .emoji{ position:fixed; font-size:28px; pointer-events:none; user-select:none }
+    .emoji{ position:fixed; font-size:28px; pointer-events:none; user-select:none; transform:translateZ(0); will-change: transform, opacity }
     .float{ animation:floaty 4s ease-in-out infinite }
     @keyframes floaty { 0%{ transform:translateY(0) } 50%{ transform:translateY(-18px) } 100%{ transform:translateY(0) } }
     .small-note{ font-size:13px; opacity:0.7; margin-top:8px; text-align:center }
     a.logo{ position:fixed; left:12px; bottom:12px; color:rgba(255,255,255,0.6); font-size:13px; text-decoration:none }
+    /* subtle transition for background so decorations feel animated */
+    body { transition:background 700ms ease; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div>
       <div class="controls">
-        <input id="moodInput" type="text" value="enter mood/theme here." aria-label="mood" />
+        <input id="moodInput" type="text" placeholder="enter mood/theme here." aria-label="mood" />
         <select id="countSelect" aria-label="number of songs">
-          <!-- options 1..20 -->
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5" selected>5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value="10">10</option>
+          <option value="11">11</option>
+          <option value="12">12</option>
+          <option value="13">13</option>
+          <option value="14">14</option>
+          <option value="15">15</option>
+          <option value="16">16</option>
+          <option value="17">17</option>
+          <option value="18">18</option>
+          <option value="19">19</option>
+          <option value="20">20</option>
         </select>
         <button id="generate">Generate</button>
       </div>
       <div class="small-note">Choose how many songs then press Generate — popup will open with results.</div>
     </div>
   </div>
-  <a class="logo" href="https://github.com/AverageOhioEnjoyer/playlist-generator" target="_blank">playlist-generator</a>
+  <a class="logo" href="https://github.com/AverageOhioEnjoyer/playlist-generator" target="_blank" rel="noopener">playlist-generator</a>
 
   <script>
-    // populate options
-    const select = document.getElementById('countSelect')
-    for(let i=1;i<=20;i++){ const o = document.createElement('option'); o.value=i; o.innerText=i; if(i===5) o.selected=true; select.appendChild(o) }
+    const moodInput = document.getElementById('moodInput');
+    const generateBtn = document.getElementById('generate');
+    const select = document.getElementById('countSelect');
 
-    const moodInput = document.getElementById('moodInput')
-    const generateBtn = document.getElementById('generate')
-
-    function hashStringToColorPair(s){ let h=0; for(let i=0;i<s.length;i++) h = ((h<<5)-h) + s.charCodeAt(i); const c1 = Math.abs(h*2654435761) % 360; const c2 = (c1+60) % 360; return [`hsl(${c1} 60% 18%)`,`hsl(${c2} 70% 45%)`] }
-
-    const emojiBuckets = {
-      happy:['😄','🎉','🌞','😎','🎶','💃'],
-      sad:['😢','🌧️','🖤','☔','🥀'],
-      chill:['🌿','☕','🛋️','🌙','🎧'],
-      angry:['🔥','⚡','😤','🥵'],
-      party:['🎉','🥳','🍾','💥','🕺']
+    // simple string -> two HSL colors
+    function hashStringToColorPair(s) {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i);
+      const c1 = Math.abs((h * 2654435761) | 0) % 360;
+      const c2 = (c1 + 60) % 360;
+      return [`hsl(${c1}, 60%, 18%)`, `hsl(${c2}, 70%, 45%)`];
     }
 
-    function pickEmojisForMood(m){ m = (m||'').toLowerCase(); for(const k of Object.keys(emojiBuckets)) if(m.includes(k)) return emojiBuckets[k]; return ['🎵','✨','🎧','💫','🎶'] }
+    const emojiBuckets = {
+      happy: ['😄','🎉','🌞','😎','🎶','💃'],
+      sad: ['😢','🌧️','🖤','☔','🥀'],
+      chill: ['🌿','☕','🛋️','🌙','🎧'],
+      angry: ['🔥','⚡','😤','🥵'],
+      party: ['🎉','🥳','🍾','💥','🕺']
+    };
 
-    function decoratePage(mood){ // colors
-      const [c1,c2] = hashStringToColorPair(mood)
-      document.body.style.background = `linear-gradient(135deg, ${c1}, ${c2})`
-      // button color
-      generateBtn.style.background = 'white'; generateBtn.style.color = '#111827'
-      // add floating emojis
-      const emojis = pickEmojisForMood(mood)
-      // remove existing emojis
-      document.querySelectorAll('.emoji.generated').forEach(e=>e.remove())
-      for(let i=0;i<6;i++){
-        const el = document.createElement('div'); el.className = 'emoji generated float'; el.style.left = (10+Math.random()*80) + '%'
-        el.style.top = (10+Math.random()*80) + '%'
-        el.style.fontSize = (18 + Math.random()*34) + 'px'
-        el.style.opacity = (0.5 + Math.random()*0.6)
-        el.style.animationDuration = (3 + Math.random()*3) + 's'
-        el.innerText = emojis[Math.floor(Math.random()*emojis.length)]
-        document.body.appendChild(el)
+    function pickEmojisForMood(m) {
+      m = (m || '').toLowerCase();
+      for (const k of Object.keys(emojiBuckets)) if (m.includes(k)) return emojiBuckets[k];
+      if (m.includes('calm') || m.includes('relax')) return emojiBuckets.chill;
+      if (m.includes('dance') || m.includes('club') || m.includes('party')) return emojiBuckets.party;
+      if (m.includes('sad') || m.includes('blue') || m.includes('lonely')) return emojiBuckets.sad;
+      return ['🎵','✨','🎧','💫','🎶'];
+    }
+
+    function removeGeneratedEmojis() {
+      document.querySelectorAll('.emoji.generated').forEach(e => e.remove());
+    }
+
+    function decoratePage(mood) {
+      const [c1, c2] = hashStringToColorPair(mood);
+      document.body.style.background = `linear-gradient(135deg, ${c1}, ${c2})`;
+      generateBtn.style.background = '#ffffff';
+      generateBtn.style.color = '#0b1220';
+      const emojis = pickEmojisForMood(mood);
+      removeGeneratedEmojis();
+      const count = 6 + Math.floor(Math.random()*6);
+      for (let i = 0; i < count; i++) {
+        const el = document.createElement('div');
+        el.className = 'emoji generated float';
+        el.style.left = (4 + Math.random() * 92) + '%';
+        el.style.top = (6 + Math.random() * 84) + '%';
+        el.style.fontSize = (18 + Math.random() * 44) + 'px';
+        el.style.opacity = (0.35 + Math.random() * 0.7);
+        el.style.animationDuration = (3 + Math.random() * 4) + 's';
+        el.innerText = emojis[Math.floor(Math.random() * emojis.length)];
+        document.body.appendChild(el);
       }
     }
 
-    generateBtn.addEventListener('click', async (e)=>{
-      const mood = (moodInput.value || '').trim() || 'mellow'
-      const count = parseInt(select.value||'5',10)
-      // decorate first page and spin
-      decoratePage(mood)
-      generateBtn.classList.add('spin')
-      setTimeout(()=> generateBtn.classList.remove('spin'), 1200)
+    generateBtn.addEventListener('animationend', (evt) => {
+      if (evt.animationName === 'spinAnim') generateBtn.classList.remove('spin');
+    });
 
-      // open new window and write result page
-      const newWin = window.open('', '_blank')
-      if(!newWin){ alert('Popup blocked. Please allow popups for this page and try again.'); return }
+    generateBtn.addEventListener('click', (e) => {
+      const mood = (moodInput.value || '').trim() || 'mellow';
+      const count = parseInt(select.value || '5', 10) || 5;
+      decoratePage(mood);
+      requestAnimationFrame(() => generateBtn.classList.add('spin'));
 
-      const escapedMood = mood.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-      const html = buildResultPageHtml(escapedMood, count)
-      newWin.document.open()
-      newWin.document.write(html)
-      newWin.document.close()
-    })
+      const newWin = window.open('', '_blank', 'noopener');
+      if (!newWin) { alert('Popup blocked. Please allow popups for this page and try again.'); return; }
 
-    function buildResultPageHtml(mood, count){
+      const escapedForTitle = mood.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const html = buildResultPageHtml(escapedForTitle, count);
+      newWin.document.open();
+      newWin.document.write(html);
+      newWin.document.close();
+      try { newWin.focus(); } catch(_) {}
+    });
+
+    function buildResultPageHtml(moodEscaped, count) {
+      const moodForScript = JSON.stringify(moodEscaped);
+      const countForScript = Number(count);
       return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Playlist for ${mood}</title>
+  <title>Playlist for ${moodEscaped}</title>
   <style>
     html,body{ height:100%; margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Arial; background:#081226; color:#f8fafc }
     .container{ min-height:100%; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:18px; padding:28px }
@@ -109,68 +150,72 @@
     .hero img{ width:100%; height:320px; object-fit:cover; display:block }
     h1{ margin:8px 0; font-size:28px }
     .meta{ opacity:0.9 }
-    ul.songs{ list-style:none; padding:0; margin:10px 0; display:flex; flex-direction:column; gap:8px }
+    ul.songs{ list-style:none; padding:0; margin:10px 0; display:flex; flex-direction:column; gap:8px; width:100%; max-width:1100px }
     li.song{ background:rgba(255,255,255,0.03); padding:12px; border-radius:10px; display:flex; gap:12px; align-items:center }
     img.art{ width:64px; height:64px; object-fit:cover; border-radius:8px }
     .empty{ opacity:0.8 }
-    .emoji{ position:fixed; font-size:40px; pointer-events:none }
+    .emoji{ position:fixed; font-size:40px; pointer-events:none; opacity:0.6; transform:translateZ(0) }
+    @media (max-width:560px){ .hero img{ height:200px } li.song{ padding:10px } }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="hero"><img id="heroImg" alt="mood image" src="https://source.unsplash.com/1200x480/?${encodeURIComponent(mood)}" /></div>
-    <h1 id="title">Playlist: ${mood}</h1>
-    <div class="meta">Songs generated from iTunes search for <strong>${mood}</strong>. Showing <span id="count">${count}</span> results.</div>
+    <div class="hero"><img id="heroImg" alt="mood image" src="https://source.unsplash.com/1200x480/?${encodeURIComponent(moodEscaped)}" /></div>
+    <h1 id="title">Playlist: ${moodEscaped}</h1>
+    <div class="meta">Songs generated from iTunes search for <strong>${moodEscaped}</strong>. Showing <span id="count">${count}</span> results.</div>
     <ul id="songList" class="songs"> <li class="empty">Loading songs…</li> </ul>
   </div>
 
   <script>
-    const mood = ${JSON.stringify(mood)}
-    const limit = ${count}
-    const list = document.getElementById('songList')
+    const mood = ${moodForScript};
+    const limit = ${countForScript};
+    const list = document.getElementById('songList');
 
-    function pickEmoji(){ const buckets = ['🎵','🎧','✨','💫','🌙','☀️','🔥','🌧️','🎉']; return buckets[Math.floor(Math.random()*buckets.length)] }
-    // floating emoji in result page
-    for(let i=0;i<5;i++){ const e = document.createElement('div'); e.className='emoji'; e.style.left=(5+Math.random()*85)+'%'; e.style.top=(10+Math.random()*75)+'%'; e.style.opacity=(0.35+Math.random()*0.6); e.innerText = pickEmoji(); document.body.appendChild(e) }
+    function pickEmoji(){ const buckets = ['🎵','🎧','✨','💫','🌙','☀️','🔥','🌧️','🎉']; return buckets[Math.floor(Math.random()*buckets.length)]; }
+    for(let i=0;i<5;i++){ const e = document.createElement('div'); e.className='emoji'; e.style.left=(5+Math.random()*85)+'%'; e.style.top=(10+Math.random()*75)+'%'; e.style.opacity=(0.25+Math.random()*0.6); e.innerText = pickEmoji(); document.body.appendChild(e); }
 
     async function fetchSongs(){
       try{
-        const url = `https://itunes.apple.com/search?term=${encodeURIComponent(mood)}&limit=${limit}&entity=song`
-        const res = await fetch(url)
-        const data = await res.json()
-        const results = data.results || []
-        renderSongs(results)
-      }catch(err){ console.error(err); renderSongs([]) }
-    }
-
-    function renderSongs(results){ list.innerHTML = ''
-      if(!results.length){ // fallback curated
-        const fallback = [
-          {trackName:'Song for '+mood, artistName:'Various', artworkUrl100:'', previewUrl:''}
-        ]
-        results = fallback
-      }
-      for(const r of results.slice(0,limit)){
-        const li = document.createElement('li'); li.className='song'
-        const artUrl = r.artworkUrl100 || ''
-        const img = document.createElement('img'); img.className='art'
-        if(artUrl) img.src = artUrl.replace('100x100bb','200x200bb')
-        else img.src = 'https://via.placeholder.com/200x200?text=♪'
-        const t = document.createElement('div')
-        t.innerHTML = `<div style="font-weight:600">${escapeHtml(r.trackName||r.trackName || 'Unknown title')}</div><div style="font-size:13px;opacity:0.85">${escapeHtml(r.artistName||'Unknown artist')}</div>`
-        li.appendChild(img); li.appendChild(t)
-        list.appendChild(li)
+        const url = `https://itunes.apple.com/search?term=${encodeURIComponent(mood)}&limit=${limit}&entity=song`;
+        const res = await fetch(url);
+        const data = await res.json();
+        const results = Array.isArray(data.results) ? data.results : [];
+        renderSongs(results);
+      }catch(err){
+        console.error(err);
+        renderSongs([]);
       }
     }
 
-    function escapeHtml(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+    function renderSongs(results){
+      list.innerHTML = '';
+      let arr = (Array.isArray(results) && results.length) ? results : null;
+      if (!arr) {
+        arr = [{trackName: 'Song for ' + mood, artistName: 'Various', artworkUrl100: ''}];
+      }
+      const toDisplay = arr.slice(0, limit);
+      for(const r of toDisplay){
+        const li = document.createElement('li'); li.className='song';
+        const artUrl = r.artworkUrl100 || '';
+        const img = document.createElement('img'); img.className='art';
+        if (artUrl) img.src = artUrl.replace('100x100bb', '200x200bb');
+        else img.src = 'https://via.placeholder.com/200x200?text=♪';
+        const t = document.createElement('div');
+        const title = escapeHtml(r.trackName || r.collectionName || 'Unknown title');
+        const artist = escapeHtml(r.artistName || 'Unknown artist');
+        t.innerHTML = '<div style="font-weight:600">' + title + '</div><div style="font-size:13px;opacity:0.85">' + artist + '</div>';
+        li.appendChild(img); li.appendChild(t);
+        list.appendChild(li);
+      }
+    }
 
-    fetchSongs()
+    function escapeHtml(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    fetchSongs();
   </script>
 </body>
 </html>`
     }
-
   </script>
 </body>
 </html>
